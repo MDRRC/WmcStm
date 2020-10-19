@@ -1745,13 +1745,13 @@ class stateMenuLocDelete : public wmcApp
             /* Remove loc. */
             if (m_locLib.GetNumberOfLocs() > 1)
             {
-                m_wmcTft.UpdateStatus("DELETING", true, WmcTft::color_red);
+                m_wmcTft.UpdateStatus("DELETING", false, WmcTft::color_red);
                 m_locLib.RemoveLoc(m_locAddressDelete);
                 m_wmcTft.UpdateSelectedAndNumberOfLocs(
                     m_locLib.GetActualSelectedLocIndex(), m_locLib.GetNumberOfLocs());
                 m_locAddressDelete = m_locLib.GetActualLocAddress();
                 m_wmcTft.ShowlocAddress(m_locAddressDelete, WmcTft::color_green);
-                m_wmcTft.UpdateStatus("DELETE", true, WmcTft::color_green);
+                m_wmcTft.UpdateStatus("DELETE", false, WmcTft::color_green);
             }
 
             /* In case the selected loc was the same as the active controlled loc
