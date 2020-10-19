@@ -76,6 +76,7 @@ uint32_t wmcApp::m_TurnoutOffDelay            = 0;
 uint8_t wmcApp::m_locFunctionAdd              = 0;
 uint8_t wmcApp::m_locFunctionChange           = 0;
 uint16_t wmcApp::m_locAddressDelete           = 0;
+uint16_t wmcApp::m_LocAddresActualDelete      = 0;
 uint16_t wmcApp::m_locAddressChange           = 0;
 uint16_t wmcApp::m_locDbDataTransmitCnt       = 0;
 uint32_t wmcApp::m_locDbDataTransmitCntRepeat = 0;
@@ -102,7 +103,6 @@ Z21Slave::locLibData* wmcApp::m_WmcLocLibInfo   = NULL;
 
 class stateInit : public wmcApp
 {
-
     void entry() override
     {
         m_wmcTft.Init();
@@ -202,7 +202,8 @@ class stateSetUpWifi : public wmcApp
     };
 
     /**
-     * Wait for connection or when no connection can be made enter wifi error state.
+     * Wait for connection or when no connection can be made enter wifi error
+     * state.
      */
     void react(updateEvent500msec const&) override
     {
@@ -313,8 +314,8 @@ class stateInitUdpConnectFail : public wmcApp
     void entry() override { m_wmcTft.UdpConnectFailed(); }
 
     /**
-     * Handle the response on the status message of the 3 seconds update event, control device might be enabled
-     * somewhat later.
+     * Handle the response on the status message of the 3 seconds update event,
+     * control device might be enabled somewhat later.
      */
     void react(updateEvent50msec const&) override
     {
@@ -339,8 +340,8 @@ class stateAdcButtons : public wmcApp
         m_wmcTft.UpdateStatus("BUTTON ADC LEARN", true, WmcTft::color_yellow);
         m_wmcTft.ShowButtonToPress(m_AdcIndex);
 
-        /* Array item 6 contains the non pressed ADC value. This mat vary, 1024 is expected but lower
-         * values are also observed, so store nnon pressed value.
+        /* Array item 6 contains the non pressed ADC value. This mat vary, 1024 is
+         * expected but lower values are also observed, so store nnon pressed value.
          */
         m_AdcButtonValue[ADC_VALUES_ARRAY_REFERENCE_INDEX] = analogRead(WMC_APP_ANALOG_IN);
         m_AdcButtonValuePrevious                           = m_AdcButtonValue[ADC_VALUES_ARRAY_REFERENCE_INDEX];
@@ -667,7 +668,8 @@ class statePowerOff : public wmcApp
 };
 
 /***********************************************************************************************************************
- * Control is on, control the loc speed and functions, go back to power off or select another locomotive.
+ * Control is on, control the loc speed and functions, go back to power off or
+ * select another locomotive.
  */
 class statePowerOn : public wmcApp
 {
@@ -1410,7 +1412,8 @@ class stateMenuLocAdd : public wmcApp
         case pushturn: break;
         case pushedNormal:
         case pushedlong:
-            /* If loc is not present goto add functions else red address indicating loc already present. */
+            /* If loc is not present goto add functions else red address indicating
+             * loc already present. */
             if (m_locLib.CheckLoc(m_locAddressAdd) != 255)
             {
                 m_wmcTft.ShowlocAddress(m_locAddressAdd, WmcTft::color_red);
@@ -1425,7 +1428,8 @@ class stateMenuLocAdd : public wmcApp
     };
 
     /**
-     * Handle button events for easier / faster increase of address and reset of address.
+     * Handle button events for easier / faster increase of address and reset of
+     * address.
      */
     void react(pushButtonsEvent const& e) override
     {
@@ -1439,7 +1443,8 @@ class stateMenuLocAdd : public wmcApp
         case button_3: m_locAddressAdd += 1000; break;
         case button_4: m_locAddressAdd = 1; break;
         case button_5:
-            /* If loc is not present goto add functions else red address indicating loc already present. */
+            /* If loc is not present goto add functions else red address indicating
+             * loc already present. */
             if (m_locLib.CheckLoc(m_locAddressAdd) != 255)
             {
                 updateScreen = false;
@@ -1704,6 +1709,7 @@ class stateMenuLocDelete : public wmcApp
         m_wmcTft.ShowLocSymbolFw(WmcTft::color_white);
         m_wmcTft.ShowlocAddress(m_locAddressDelete, WmcTft::color_green);
         m_wmcTft.UpdateSelectedAndNumberOfLocs(m_locLib.GetActualSelectedLocIndex(), m_locLib.GetNumberOfLocs());
+        m_LocAddresActualDelete = m_locLib.GetActualLocAddress();
     }
 
     /**
@@ -1722,10 +1728,28 @@ class stateMenuLocDelete : public wmcApp
         case pushedNormal:
         case pushedlong:
             /* Remove loc. */
-            m_locLib.RemoveLoc(m_locAddressDelete);
-            m_wmcTft.UpdateSelectedAndNumberOfLocs(m_locLib.GetActualSelectedLocIndex(), m_locLib.GetNumberOfLocs());
-            m_locAddressDelete = m_locLib.GetActualLocAddress();
-            m_wmcTft.ShowlocAddress(m_locAddressDelete, WmcTft::color_green);
+            if (m_locLib.GetNumberOfLocs() > 1)
+            {
+                m_wmcTft.UpdateStatus("DELETING", true, WmcTft::color_red);
+                m_locLib.RemoveLoc(m_locAddressDelete);
+                m_wmcTft.UpdateSelectedAndNumberOfLocs(
+                    m_locLib.GetActualSelectedLocIndex(), m_locLib.GetNumberOfLocs());
+                m_locAddressDelete = m_locLib.GetActualLocAddress();
+                m_wmcTft.ShowlocAddress(m_locAddressDelete, WmcTft::color_green);
+                m_wmcTft.UpdateStatus("DELETE", true, WmcTft::color_green);
+            }
+
+            /* In case the selected loc was the same as the active controlled loc
+               update last selected loc entry.*/
+            if (m_locAddressDelete == m_locAddressDelete)
+            {
+                m_locAddressDelete = m_locLib.GetActualLocAddress();
+                m_LocStorage.SelectedLocIndexStore(m_locLib.GetActualSelectedLocIndex() - 1);
+            }
+            else
+            {
+                m_locAddressDelete = m_locLib.GetActualLocAddress();
+            }
             break;
         default: break;
         }
@@ -1923,7 +1947,8 @@ class stateCvProgramming : public wmcApp
     };
 
     /**
-     * Keep alive by requesting loc status. Requesting power system status forces the CV mode back to normal mode...
+     * Keep alive by requesting loc status. Requesting power system status forces
+     * the CV mode back to normal mode...
      */
     void react(updateEvent3sec const&) override
     {
@@ -2240,7 +2265,8 @@ bool wmcApp::updateLocInfoOnScreen(bool updateAll)
             m_locFunctionAssignment[Index] = m_locLib.FunctionAssignedGet(Index);
         }
 
-        /* Invert functions so function symbols are updated if new loc is selected and set new direction. */
+        /* Invert functions so function symbols are updated if new loc is selected
+         * and set new direction. */
         if (m_locSelection == true)
         {
             m_WmcLocInfoControl.Functions = ~m_WmcLocInfoReceived->Functions;
