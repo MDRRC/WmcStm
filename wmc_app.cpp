@@ -86,6 +86,7 @@ bool wmcApp::m_CvPomProgramming               = false;
 bool wmcApp::m_CvPomProgrammingFromPowerOn    = false;
 bool wmcApp::m_EmergencyStopEnabled           = false;
 bool wmcApp::m_ButtonPrevious                 = false;
+bool wmcApp::m_PulseSwitchInvert              = false;
 uint8_t wmcApp::m_ButtonIndexPrevious         = 0;
 uint8_t wmcApp::m_AdcIndex                    = 0;
 uint16_t wmcApp::m_AdcButtonValuePrevious     = 1024;
@@ -151,6 +152,7 @@ class stateSetUpWifi : public wmcApp
         /* Init modules. */
         m_wmcTft.ShowName();
         m_wmcTft.ShowVersion(SW_MAJOR, SW_MINOR, SW_PATCH);
+        m_PulseSwitchInvert    = m_LocStorage.PulseSwitchInvertGet();
         m_EmergencyStopEnabled = m_LocStorage.EmergencyOptionGet();
 
         m_locLib.Init(m_LocStorage);
@@ -647,9 +649,9 @@ class statePowerOff : public wmcApp
         {
         case pushturn:
             /* Select next or previous loc. */
-            if (e.Delta != 0)
+            if (CheckPulseSwitchRevert(e.Delta) != 0)
             {
-                m_locLib.GetNextLoc(e.Delta);
+                m_locLib.GetNextLoc(CheckPulseSwitchRevert(CheckPulseSwitchRevert(e.Delta)));
                 m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
                 WmcCheckForDataTx();
                 m_wmcTft.UpdateSelectedAndNumberOfLocs(
@@ -735,9 +737,9 @@ class statePowerOn : public wmcApp
         {
         case pushturn:
             /* Select next or previous loc. */
-            if (e.Delta != 0)
+            if (CheckPulseSwitchRevert(e.Delta) != 0)
             {
-                m_locLib.GetNextLoc(e.Delta);
+                m_locLib.GetNextLoc(CheckPulseSwitchRevert(e.Delta));
                 m_wmcTft.UpdateSelectedAndNumberOfLocs(
                     m_locLib.GetActualSelectedLocIndex(), m_locLib.GetNumberOfLocs());
                 m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
@@ -749,7 +751,7 @@ class statePowerOn : public wmcApp
             /* Increase or decrease speed. */
             if (m_WmcLocSpeedRequestPending == false)
             {
-                Speed = m_locLib.SpeedSet(e.Delta);
+                Speed = m_locLib.SpeedSet(CheckPulseSwitchRevert(e.Delta));
                 if (Speed != 0xFFFF)
                 {
                     m_WmcLocSpeedRequestPending = true;
@@ -1033,7 +1035,7 @@ class stateTurnoutControl : public wmcApp
         {
         case pushturn: break;
         case turn:
-            if (e.Delta > 0)
+            if (CheckPulseSwitchRevert(e.Delta) > 0)
             {
                 /* Increase address and check for overrrun. */
                 if (m_TurnOutAddress < ADDRESS_TURNOUT_MAX)
@@ -1047,7 +1049,7 @@ class stateTurnoutControl : public wmcApp
 
                 updateScreen = true;
             }
-            else if (e.Delta < 0)
+            else if (CheckPulseSwitchRevert(e.Delta) < 0)
             {
                 /* Decrease address and handle address 0. */
                 if (m_TurnOutAddress > ADDRESS_TURNOUT_MIN)
@@ -1397,13 +1399,13 @@ class stateMenuLocAdd : public wmcApp
         {
         case turn:
             /* Increase or decrease loc address to be added. */
-            if (e.Delta > 0)
+            if (CheckPulseSwitchRevert(e.Delta) > 0)
             {
                 m_locAddressAdd++;
                 m_locAddressAdd = m_locLib.limitLocAddress(m_locAddressAdd);
                 m_wmcTft.ShowlocAddress(m_locAddressAdd, WmcTft::color_green);
             }
-            else if (e.Delta < 0)
+            else if (CheckPulseSwitchRevert(e.Delta) < 0)
             {
                 m_locAddressAdd--;
                 m_locAddressAdd = m_locLib.limitLocAddress(m_locAddressAdd);
@@ -1503,7 +1505,7 @@ class stateMenuLocFunctionsAdd : public wmcApp
         {
         case turn:
             /* ncrease of decrease the function. */
-            if (e.Delta > 0)
+            if (CheckPulseSwitchRevert(e.Delta) > 0)
             {
                 m_locFunctionAdd++;
                 if (m_locFunctionAdd > FUNCTION_MAX)
@@ -1512,7 +1514,7 @@ class stateMenuLocFunctionsAdd : public wmcApp
                 }
                 m_wmcTft.FunctionAddUpdate(m_locFunctionAdd);
             }
-            else if (e.Delta < 0)
+            else if (CheckPulseSwitchRevert(e.Delta) < 0)
             {
                 if (m_locFunctionAdd == FUNCTION_MIN)
                 {
@@ -1614,7 +1616,7 @@ class stateMenuLocFunctionsChange : public wmcApp
         {
         case turn:
             /* Change function. */
-            if (e.Delta > 0)
+            if (CheckPulseSwitchRevert(e.Delta) > 0)
             {
                 m_locFunctionChange++;
                 if (m_locFunctionChange > FUNCTION_MAX)
@@ -1623,7 +1625,7 @@ class stateMenuLocFunctionsChange : public wmcApp
                 }
                 m_wmcTft.FunctionAddUpdate(m_locFunctionChange);
             }
-            else if (e.Delta < 0)
+            else if (CheckPulseSwitchRevert(e.Delta) < 0)
             {
                 if (m_locFunctionChange == FUNCTION_MIN)
                 {
@@ -1638,7 +1640,7 @@ class stateMenuLocFunctionsChange : public wmcApp
             break;
         case pushturn:
             /* Select another loc and update function data of newly selected loc. */
-            m_locAddressChange = m_locLib.GetNextLoc(e.Delta);
+            m_locAddressChange = m_locLib.GetNextLoc(CheckPulseSwitchRevert(e.Delta));
             m_wmcTft.UpdateSelectedAndNumberOfLocs(m_locLib.GetActualSelectedLocIndex(), m_locLib.GetNumberOfLocs());
 
             for (Index = 0; Index < 5; Index++)
@@ -1736,7 +1738,7 @@ class stateMenuLocDelete : public wmcApp
         {
         case turn:
             /* Select loc to be deleted. */
-            m_locAddressDelete = m_locLib.GetNextLoc(e.Delta);
+            m_locAddressDelete = m_locLib.GetNextLoc(CheckPulseSwitchRevert(e.Delta));
             m_wmcTft.UpdateSelectedAndNumberOfLocs(m_locLib.GetActualSelectedLocIndex(), m_locLib.GetNumberOfLocs());
             m_wmcTft.ShowlocAddress(m_locAddressDelete, WmcTft::color_green);
             break;
@@ -1985,7 +1987,7 @@ class stateCvProgramming : public wmcApp
         case pushedShort:
         case pushedNormal:
             /* Forward event */
-            Event.EventData.Delta  = e.Delta;
+            Event.EventData.Delta  = CheckPulseSwitchRevert(e.Delta);
             Event.EventData.Status = e.Status;
             send_event(Event);
             break;
@@ -2332,4 +2334,22 @@ void wmcApp::PrepareLanXSetLocoDriveAndTransmit(uint16_t Speed)
 
     m_z21Slave.LanXSetLocoDrive(&LocInfoTx);
     WmcCheckForDataTx();
+}
+
+/***********************************************************************************************************************
+ * Invert the pulse switch delate value if required.
+ */
+int8_t wmcApp::CheckPulseSwitchRevert(int8_t Delta)
+{
+    int8_t DeltaResult = Delta;
+
+    if (DeltaResult != 0)
+    {
+        if (m_PulseSwitchInvert == true)
+        {
+            DeltaResult *= -1;
+        }
+    }
+
+    return (DeltaResult);
 }
