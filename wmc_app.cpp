@@ -611,8 +611,11 @@ class statePowerOff : public wmcApp
 
     void react(updateEvent500msec const&)
     {
-        m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
-        WmcCheckForDataTx();
+        if (m_locSelection == false)
+        {
+            m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
+            WmcCheckForDataTx();
+        }
     };
 
     /**
@@ -620,8 +623,11 @@ class statePowerOff : public wmcApp
      */
     void react(updateEvent3sec const&) override
     {
-        m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
-        WmcCheckForDataTx();
+        if (m_locSelection == false)
+        {
+            m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
+            WmcCheckForDataTx();
+        }
     }
 
     /**
@@ -652,10 +658,9 @@ class statePowerOff : public wmcApp
             if (CheckPulseSwitchRevert(e.Delta) != 0)
             {
                 m_locLib.GetNextLoc(CheckPulseSwitchRevert(CheckPulseSwitchRevert(e.Delta)));
-                m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
-                WmcCheckForDataTx();
                 m_wmcTft.UpdateSelectedAndNumberOfLocs(
                     m_locLib.GetActualSelectedLocIndex(), m_locLib.GetNumberOfLocs());
+                m_wmcTft.UpdateLocInfoSelect(m_locLib.GetActualLocAddress(), m_locLib.GetLocName());
                 m_locSelection = true;
             }
             break;
@@ -665,6 +670,10 @@ class statePowerOff : public wmcApp
             WmcCheckForDataTx();
             break;
         case pushedlong: transit<stateMainMenu1>(); break;
+        case released:
+            m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
+            WmcCheckForDataTx();
+            break;
         default: break;
         }
     }
@@ -722,8 +731,11 @@ class statePowerOn : public wmcApp
      */
     void react(updateEvent500msec const&)
     {
-        m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
-        WmcCheckForDataTx();
+        if (m_locSelection == false)
+        {
+            m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
+            WmcCheckForDataTx();
+        }
     };
 
     /**
@@ -739,11 +751,10 @@ class statePowerOn : public wmcApp
             /* Select next or previous loc. */
             if (CheckPulseSwitchRevert(e.Delta) != 0)
             {
-                m_locLib.GetNextLoc(CheckPulseSwitchRevert(e.Delta));
+                m_locLib.GetNextLoc(CheckPulseSwitchRevert(CheckPulseSwitchRevert(e.Delta)));
                 m_wmcTft.UpdateSelectedAndNumberOfLocs(
                     m_locLib.GetActualSelectedLocIndex(), m_locLib.GetNumberOfLocs());
-                m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
-                WmcCheckForDataTx();
+                m_wmcTft.UpdateLocInfoSelect(m_locLib.GetActualLocAddress(), m_locLib.GetLocName());
                 m_locSelection = true;
             }
             break;
@@ -776,6 +787,10 @@ class statePowerOn : public wmcApp
             m_CvPomProgramming            = true;
             m_CvPomProgrammingFromPowerOn = true;
             transit<stateCvProgramming>();
+            break;
+        case released:
+            m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
+            WmcCheckForDataTx();
             break;
         }
     };
@@ -895,6 +910,7 @@ class stateEmergencyStop : public wmcApp
             break;
         case pushedShort:
         case pushedlong: transit<stateMainMenu1>(); break;
+        case released: break;
         }
     };
 
@@ -1243,6 +1259,7 @@ class stateMainMenu1 : public wmcApp
         case pushedShort:
         case pushedNormal:
         case pushedlong:
+        case released:
             m_locSelection = true;
             transit<stateInitStatusGet>();
             break;
@@ -1303,6 +1320,7 @@ class stateMainMenu2 : public wmcApp
         case pushedShort:
         case pushedNormal:
         case pushedlong:
+        case released:
             m_locSelection = true;
             transit<stateInitStatusGet>();
             break;
