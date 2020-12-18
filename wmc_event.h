@@ -26,6 +26,7 @@ enum pulseSwitchStatus
     pushedShort,
     pushedNormal,
     pushedlong,
+    released,
 };
 
 /**
