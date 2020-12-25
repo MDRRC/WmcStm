@@ -75,6 +75,7 @@ Z21Slave::turnout wmcApp::m_TurnOutDirection  = Z21Slave::directionOff;
 uint32_t wmcApp::m_TurnoutOffDelay            = 0;
 uint8_t wmcApp::m_locFunctionAdd              = 0;
 uint8_t wmcApp::m_locFunctionChange           = 0;
+uint16_t wmcApp::m_LocInfoRequestCounter      = 0;
 uint16_t wmcApp::m_locAddressDelete           = 0;
 uint16_t wmcApp::m_LocAddresActualDelete      = 0;
 uint16_t wmcApp::m_locAddressChange           = 0;
@@ -485,6 +486,7 @@ class stateInitLocInfoGet : public wmcApp
     void entry() override
     {
         /* Get loc data. */
+        m_LocInfoRequestCounter = 0;
         m_locLib.UpdateLocData(m_locLib.GetActualLocAddress());
         m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
         WmcCheckForDataTx();
@@ -531,6 +533,14 @@ class stateInitLocInfoGet : public wmcApp
     {
         m_z21Slave.LanXGetLocoInfo(m_locLib.GetActualLocAddress());
         WmcCheckForDataTx();
+
+        m_LocInfoRequestCounter++;
+        if (m_LocInfoRequestCounter > 10)
+        {
+            // If a loc is requested not known by the command station there might be no response.
+            // So after 5 seconds jump to power off so a new loc can be selected..
+            transit<statePowerOff>();
+        }
     }
 
     /**
@@ -555,6 +565,13 @@ class statePowerOff : public wmcApp
         m_locSelection = false;
         m_wmcTft.UpdateStatus("POWER OFF", false, WmcTft::color_red);
         m_wmcTft.UpdateSelectedAndNumberOfLocs(m_locLib.GetActualSelectedLocIndex(), m_locLib.GetNumberOfLocs());
+
+        // IF no response was received during loc info state show loc address in magenta color
+        // indicating something is wrong....
+        if (m_LocInfoRequestCounter > 10)
+        {
+            m_wmcTft.ShowlocAddress(m_locLib.GetActualLocAddress(), WmcTft::color_magenta);
+        }
     }
 
     /**
