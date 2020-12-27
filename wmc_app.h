@@ -105,6 +105,7 @@ protected:
     static Z21Slave::locLibData* m_WmcLocLibInfo;
     static bool m_ButtonPrevious;
     static bool m_PulseSwitchInvert;
+    static bool m_TurnoutAutoOff;
     static uint8_t m_ButtonIndexPrevious;
     static bool m_WmcLocSpeedRequestPending;
     static bool m_CvPomProgramming;

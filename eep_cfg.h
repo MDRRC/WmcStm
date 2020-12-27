@@ -17,7 +17,7 @@
 class EepCfg
 {
 public:
-    static const uint8_t EepromVersion = 8; /* Version of data in EEPROM. */
+    static const uint8_t EepromVersion = 9; /* Version of data in EEPROM. */
 
     static const int EepromVersionAddress         = 1;   /* EEPROM address version info. */
     static const int AcTypeControlAddress         = 2;   /* EEPROM address for "AC" type control */
@@ -25,7 +25,8 @@ public:
     static const int StaticIpAddress              = 6;   /* EEPROM address static or dynamic IP address */
     static const int ButtonAdcValuesAddressValid  = 8;   /* EEPROM address for valid ADC data indicator. */
     static const int PulseSwitchInvertAddress     = 10;  /* EEPORM address for inverting pulse switch direction. */
-    static const int ButtonAdcValuesAddress       = 12;  /* EEPORM address for ADC data of buttons. */
+    static const int AutoOffAddress               = 12;  /* EEPORM address for turnout off option enabled/disabled. */
+    static const int ButtonAdcValuesAddress       = 20;  /* EEPORM address for ADC data of buttons. */
     static const int SelectedLocAddress           = 48;  /* EEPORM address for storage of selected locomotive. */
     static const int SsidNameAddress              = 50;  /* EEPROM Address of Ssid name */
     static const int SsidPasswordAddress          = 100; /* EEPROM Address of Ssid password */
