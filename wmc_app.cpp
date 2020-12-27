@@ -71,7 +71,7 @@ uint16_t wmcApp::m_ConnectCnt                 = 0;
 uint16_t wmcApp::m_UdpLocalPort               = 21105;
 uint16_t wmcApp::m_locAddressAdd              = 1;
 uint16_t wmcApp::m_TurnOutAddress             = ADDRESS_TURNOUT_MIN;
-Z21Slave::turnout wmcApp::m_TurnOutDirection  = Z21Slave::directionOff;
+Z21Slave::turnout wmcApp::m_TurnOutDirection  = Z21Slave::directionForwardOff;
 uint32_t wmcApp::m_TurnoutOffDelay            = 0;
 uint8_t wmcApp::m_locFunctionAdd              = 0;
 uint8_t wmcApp::m_locFunctionChange           = 0;
@@ -1026,7 +1026,7 @@ class stateTurnoutControl : public wmcApp
      */
     void entry() override
     {
-        m_TurnOutDirection = Z21Slave::directionOff;
+        m_TurnOutDirection = Z21Slave::directionForwardOff;
 
         m_wmcTft.UpdateStatus("TURNOUT", true, WmcTft::color_green);
         m_wmcTft.ShowTurnoutScreen();
@@ -1045,12 +1045,19 @@ class stateTurnoutControl : public wmcApp
         default: break;
         }
 
-        /* When turnout active sent after 500msec off command. */
-        if (m_TurnOutDirection != Z21Slave::directionOff)
+        /* When turnout active sent after about 500msec off command. */
+        if ((m_TurnOutDirection == Z21Slave::Z21Slave::directionForward)
+            || (m_TurnOutDirection == Z21Slave::Z21Slave::directionTurn))
         {
             if ((millis() - m_TurnoutOffDelay) > 500)
             {
-                m_TurnOutDirection = Z21Slave::directionOff;
+                switch (m_TurnOutDirection)
+                {
+                case Z21Slave::directionForward: m_TurnOutDirection = Z21Slave::directionForwardOff; break;
+                case Z21Slave::directionTurn: m_TurnOutDirection = Z21Slave::directionTurnOff; break;
+                case Z21Slave::directionTurnOff:
+                case Z21Slave::directionForwardOff: break;
+                }
                 m_z21Slave.LanXSetTurnout(m_TurnOutAddress - 1, m_TurnOutDirection);
                 WmcCheckForDataTx();
                 m_wmcTft.ShowTurnoutDirection(static_cast<uint8_t>(m_TurnOutDirection));
@@ -1173,12 +1180,21 @@ class stateTurnoutControl : public wmcApp
      */
     void exit() override
     {
-        if (m_TurnOutDirection != Z21Slave::directionOff)
+        if ((m_TurnOutDirection == Z21Slave::Z21Slave::directionForward)
+            || (m_TurnOutDirection == Z21Slave::Z21Slave::directionTurn))
         {
-            m_TurnOutDirection = Z21Slave::directionOff;
-            m_z21Slave.LanXSetTurnout(m_TurnOutAddress - 1, m_TurnOutDirection);
-            WmcCheckForDataTx();
-            m_wmcTft.ShowTurnoutDirection(static_cast<uint8_t>(m_TurnOutDirection));
+            if ((millis() - m_TurnoutOffDelay) > 500)
+            {
+                switch (m_TurnOutDirection)
+                {
+                case Z21Slave::directionForward: m_TurnOutDirection = Z21Slave::directionForwardOff; break;
+                case Z21Slave::directionTurn: m_TurnOutDirection = Z21Slave::directionTurnOff; break;
+                case Z21Slave::directionTurnOff:
+                case Z21Slave::directionForwardOff: break;
+                }
+                m_z21Slave.LanXSetTurnout(m_TurnOutAddress - 1, m_TurnOutDirection);
+                WmcCheckForDataTx();
+            }
         }
     }
 };
