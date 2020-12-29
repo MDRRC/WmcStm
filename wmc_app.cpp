@@ -1048,24 +1048,25 @@ class stateTurnoutControl : public wmcApp
         }
 
         /* When turnout active sent after about 500msec off command. */
-        if (m_TurnoutAutoOff == true)
+        if ((m_TurnOutDirection == Z21Slave::Z21Slave::directionForward)
+            || (m_TurnOutDirection == Z21Slave::Z21Slave::directionTurn))
         {
-            if ((m_TurnOutDirection == Z21Slave::Z21Slave::directionForward)
-                || (m_TurnOutDirection == Z21Slave::Z21Slave::directionTurn))
+            if ((millis() - m_TurnoutOffDelay) > 500)
             {
-                if ((millis() - m_TurnoutOffDelay) > 500)
+                switch (m_TurnOutDirection)
                 {
-                    switch (m_TurnOutDirection)
-                    {
-                    case Z21Slave::directionForward: m_TurnOutDirection = Z21Slave::directionForwardOff; break;
-                    case Z21Slave::directionTurn: m_TurnOutDirection = Z21Slave::directionTurnOff; break;
-                    case Z21Slave::directionTurnOff:
-                    case Z21Slave::directionForwardOff: break;
-                    }
+                case Z21Slave::directionForward: m_TurnOutDirection = Z21Slave::directionForwardOff; break;
+                case Z21Slave::directionTurn: m_TurnOutDirection = Z21Slave::directionTurnOff; break;
+                case Z21Slave::directionTurnOff:
+                case Z21Slave::directionForwardOff: break;
+                }
+                if (m_TurnoutAutoOff == true)
+                {
+                    // Only send off command when active.
                     m_z21Slave.LanXSetTurnout(m_TurnOutAddress - 1, m_TurnOutDirection);
                     WmcCheckForDataTx();
-                    m_wmcTft.ShowTurnoutDirection(static_cast<uint8_t>(m_TurnOutDirection));
                 }
+                m_wmcTft.ShowTurnoutDirection(static_cast<uint8_t>(m_TurnOutDirection));
             }
         }
     };
@@ -1187,22 +1188,15 @@ class stateTurnoutControl : public wmcApp
     {
         if (m_TurnoutAutoOff == true)
         {
-            if ((m_TurnOutDirection == Z21Slave::Z21Slave::directionForward)
-                || (m_TurnOutDirection == Z21Slave::Z21Slave::directionTurn))
+            switch (m_TurnOutDirection)
             {
-                if ((millis() - m_TurnoutOffDelay) > 500)
-                {
-                    switch (m_TurnOutDirection)
-                    {
-                    case Z21Slave::directionForward: m_TurnOutDirection = Z21Slave::directionForwardOff; break;
-                    case Z21Slave::directionTurn: m_TurnOutDirection = Z21Slave::directionTurnOff; break;
-                    case Z21Slave::directionTurnOff:
-                    case Z21Slave::directionForwardOff: break;
-                    }
-                    m_z21Slave.LanXSetTurnout(m_TurnOutAddress - 1, m_TurnOutDirection);
-                    WmcCheckForDataTx();
-                }
+            case Z21Slave::directionForward: m_TurnOutDirection = Z21Slave::directionForwardOff; break;
+            case Z21Slave::directionTurn: m_TurnOutDirection = Z21Slave::directionTurnOff; break;
+            case Z21Slave::directionTurnOff:
+            case Z21Slave::directionForwardOff: break;
             }
+            m_z21Slave.LanXSetTurnout(m_TurnOutAddress - 1, m_TurnOutDirection);
+            WmcCheckForDataTx();
         }
     }
 };
@@ -2346,15 +2340,15 @@ bool wmcApp::updateLocInfoOnScreen(bool updateAll)
         if (m_locSelection == true)
         {
             m_WmcLocInfoControl.Functions = ~m_WmcLocInfoReceived->Functions;
-            m_locSelection                = false;
         }
 
         convertLocDataToDisplayData(m_WmcLocInfoReceived, &locInfoActual);
         convertLocDataToDisplayData(&m_WmcLocInfoControl, &locInfoPrevious);
-        m_wmcTft.UpdateLocInfo(
-            &locInfoActual, &locInfoPrevious, m_locFunctionAssignment, m_locLib.GetLocName(), updateAll);
+        m_wmcTft.UpdateLocInfo(&locInfoActual, &locInfoPrevious, m_locFunctionAssignment, m_locLib.GetLocName(),
+            updateAll | m_locSelection);
 
         memcpy(&m_WmcLocInfoControl, m_WmcLocInfoReceived, sizeof(Z21Slave::locInfo));
+        m_locSelection = false;
     }
     else
     {
