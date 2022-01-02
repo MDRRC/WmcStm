@@ -336,7 +336,7 @@ class stateInitUdpConnectFail : public wmcApp
 };
 
 /***********************************************************************************************************************
- * No UDP connection to control unit possible.
+ * Learn ADC values of the (function) buttons.
  */
 class stateAdcButtons : public wmcApp
 {
