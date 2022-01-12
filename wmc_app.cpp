@@ -2076,13 +2076,11 @@ class stateCvProgramming : public wmcApp
             {
                 Event.EventData.Button = e.Button;
                 send_event(Event);
-
-                m_z21Slave.LanGetStatus();
-                WmcCheckForDataTx();
-                transit<stateMainMenu1>();
             }
             else
             {
+                m_z21Slave.LanGetStatus();
+                WmcCheckForDataTx();
                 transit<stateInitStatusGet>();
             }
             break;
