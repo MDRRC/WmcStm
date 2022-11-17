@@ -2072,17 +2072,8 @@ class stateCvProgramming : public wmcApp
         case button_4:
         case button_5:
         case button_power:
-            if (m_CvPomProgrammingFromPowerOn == false)
-            {
-                Event.EventData.Button = e.Button;
-                send_event(Event);
-            }
-            else
-            {
-                m_z21Slave.LanGetStatus();
-                WmcCheckForDataTx();
-                transit<stateInitStatusGet>();
-            }
+            Event.EventData.Button = e.Button;
+            send_event(Event);
             break;
         case button_none: break;
         }
